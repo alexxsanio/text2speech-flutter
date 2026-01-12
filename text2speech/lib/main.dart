@@ -24,76 +24,57 @@ class TTSPage extends StatefulWidget {
 class _TTSPageState extends State<TTSPage> {
   final TextEditingController controller = TextEditingController();
   final AudioPlayer player = AudioPlayer();
+
   String? audioUrl;
   bool loading = false;
 
-  // Function to show error dialog
-  void _showError(String message) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Error"),
-        content: Text(message),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context), child: const Text("OK"))
-        ],
-      ),
-    );
-  }
-
   Future<void> generateAudio() async {
-    if (controller.text.isEmpty) {
-      _showError("Please enter text to convert.");
-      return;
-    }
+    if (controller.text.isEmpty) return;
 
     setState(() => loading = true);
 
     try {
       final response = await http.post(
-        Uri.parse("http://localhost:8000/tts"), // <-- update this
+        Uri.parse(
+          "https://text2speech-flutter-production.up.railway.app/tts",
+        ),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"text": controller.text}),
       );
 
-      // Check for HTTP errors
       if (response.statusCode != 200) {
-        throw Exception(
-            "Server returned status code ${response.statusCode}");
+        debugPrint("TTS failed: ${response.statusCode}");
+        return;
       }
 
       final data = jsonDecode(response.body);
-      if (data['audio_file'] == null) {
-        throw Exception("Invalid response from server.");
+      final audioFile = data['audio_file'];
+
+      if (audioFile == null) {
+        debugPrint("audio_file missing in response");
+        return;
       }
 
+      debugPrint("Received audio_file: $audioFile");
+
       setState(() {
-        audioUrl = "http://localhost:8000/audio/${data['audio_file']}";
-        loading = false;
+        audioUrl =
+            "https://text2speech-flutter-production.up.railway.app/audio/$audioFile";
       });
-    } on http.ClientException catch (e) {
-      setState(() => loading = false);
-      _showError("Network error: ${e.message}");
-    } on Exception catch (e) {
-      setState(() => loading = false);
-      _showError("Error: ${e.toString()}");
     } catch (e) {
+      debugPrint("generateAudio error: $e");
+    } finally {
       setState(() => loading = false);
-      _showError("Unexpected error: ${e.toString()}");
     }
   }
 
   Future<void> playAudio() async {
-    if (audioUrl == null) {
-      _showError("No audio to play.");
-      return;
-    }
+    if (audioUrl == null) return;
 
     try {
       await player.play(UrlSource(audioUrl!));
     } catch (e) {
-      _showError("Failed to play audio: ${e.toString()}");
+      debugPrint("playAudio error: $e");
     }
   }
 
@@ -117,7 +98,11 @@ class _TTSPageState extends State<TTSPage> {
             ElevatedButton(
               onPressed: loading ? null : generateAudio,
               child: loading
-                  ? const CircularProgressIndicator()
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Text("Generate Speech"),
             ),
             if (audioUrl != null) ...[

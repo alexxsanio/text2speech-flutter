@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from supertonic import TTS
 import uuid
 from dotenv import load_dotenv
@@ -8,7 +9,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI()
-app.mount("/audio", StaticFiles(directory="."), name="audio")
+app.mount("/audios", StaticFiles(directory="."), name="audio")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # tighten later
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class TTSRequest(BaseModel):
     text: str
