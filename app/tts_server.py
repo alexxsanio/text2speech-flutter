@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI()
-app.mount("/audios", StaticFiles(directory="."), name="audio")
+app.mount("/audio", StaticFiles(directory="./audios/"), name="audio")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # tighten later
